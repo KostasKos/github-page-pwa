@@ -3,34 +3,56 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Grafana Dashboard through GitHub page as PWA </title>
-
+  <title>Grafana Dashboard through GitHub page as PWA</title>
 
   <link rel="canonical" href="https://github.com/KostasKos/github-page-pwa" /> 
   <link rel="manifest" href="/github-page-pwa/manifest.json">
+
   <style>
-    .shrink-iframe {
-      transform: scale(0.7); /* Adjust the scaling factor to the size you want */
-      transform-origin: 0 0; /* Ensure the iframe shrinks from the top-left corner */
-      width: 2000px; /* Adjust the iframe width to match the scale */
-      height: 1200px; /* Adjust the iframe height to match the scale */
+    /* General body styling for centering */
+    body {
+      margin: 0;
+      display: flex;
+      justify-content: center; /* Centers horizontally */
+      align-items: center; /* Centers vertically */
+      height: 100vh; /* Full viewport height */
+      background-color: #f4f4f4; /* Optional: Light background for better aesthetics */
+      font-family: Arial, sans-serif; /* Optional: Modern font for better readability */
+    }
+
+    /* Styling for the heading */
+    h1 {
+      position: absolute;
+      top: 10px; /* Adjusts the position of the heading */
+      text-align: center;
+      width: 100%;
+      margin: 0;
+    }
+
+    /* Styling for the iframe container */
+    iframe {
+      border: none; /* Removes default border around iframe */
+      box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2); /* Optional: Adds a shadow for better aesthetics */
+      transform: scale(0.7); /* Shrinks iframe */
+      transform-origin:center; /* Keeps scaling from the top-left corner */
+      width: 4000px; /* Matches the scaled width */
+      height: 1150px; /* Matches the scaled height */
     }
   </style>
-
 </head>
 <body>
-  <h1> Vertical Farm's Sensors Data Dashboard </h1>
+  <h1>Vertical Farm's Sensors Data Dashboard</h1>
   <iframe
     src="https://labserver.sense-campus.gr:8087/d/be5j1ovj3gy68f/sensorsdata?from=2024-11-29T19:37:21.356Z&to=2024-12-11T23:56:33.356Z&timezone=browser"
-    class="shrink-iframe"
   ></iframe>
+
   <script>
-      if (navigator.serviceWorker) {
-        navigator.serviceWorker.register (
-          '/github-page-pwa/sw.js',
-          {scope: '/github-page-pwa/'}
-        )
-      }
+    if (navigator.serviceWorker) {
+      navigator.serviceWorker.register(
+        '/github-page-pwa/sw.js',
+        {scope: '/github-page-pwa/'}
+      );
+    }
   </script>
 </body>
 </html>
