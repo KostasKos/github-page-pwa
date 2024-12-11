@@ -3,34 +3,198 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Grafana Dashboard through GitHub page as PWA </title>
-
+  <title>Grafana Dashboard & Sensor Data</title>
 
   <link rel="canonical" href="https://github.com/KostasKos/github-page-pwa" /> 
   <link rel="manifest" href="/github-page-pwa/manifest.json">
+
   <style>
-    .shrink-iframe {
-      transform: scale(0.7); /* Adjust the scaling factor to the size you want */
-      transform-origin: 0 0; /* Ensure the iframe shrinks from the top-left corner */
-      width: 2000px; /* Adjust the iframe width to match the scale */
-      height: 1200px; /* Adjust the iframe height to match the scale */
+    /* General body styling for centering */
+    body {
+      margin: 0;
+      display: flex;
+      justify-content: center; /* Centers horizontally */
+      align-items: center; /* Centers vertically */
+      flex-direction: column;
+      height: 100vh; /* Full viewport height */
+      background-color: #f4f4f4; /* Optional: Light background for better aesthetics */
+      font-family: Arial, sans-serif; /* Optional: Modern font for better readability */
+    }
+
+    /* Styling for the heading */
+    h1 {
+      position: absolute;
+      top: 10px; /* Adjusts the position of the heading */
+      text-align: center;
+      width: 100%;
+      margin: 0;
+    }
+
+    /* Styling for the iframe container */
+    iframe {
+      border: none; /* Removes default border around iframe */
+      box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2); /* Optional: Adds a shadow for better aesthetics */
+      transform: scale(0.7); /* Shrinks iframe */
+      transform-origin:center; /* Keeps scaling from the top-left corner */
+      width: 4000px; /* Matches the scaled width */
+      height: 1150px; /* Matches the scaled height */
+    }
+
+    /* Sensor Data Page Styling */
+    #alert-box {
+      display: none;
+      padding: 10px;
+      margin-bottom: 20px;
+      background-color: #f8d7da; /* Red alert background */
+      color: #721c24; /* Dark red text */
+      border: 1px solid #f5c6cb;
+      border-radius: 5px;
+    }
+    table {
+      border-collapse: collapse;
+      width: 100%;
+      margin-top: 20px;
+    }
+    th, td {
+      border: 1px solid #ddd;
+      padding: 8px;
+      text-align: left;
+    }
+    th {
+      background-color: #f4f4f4;
+    }
+    #alert-table td, #alert-table th {
+      text-align: center;
     }
   </style>
 
+  <script>
+    // Fetch and update sensor data
+    async function fetchData() {
+      try {
+        const response = await fetch('/api/data'); // API call to Flask
+        const data = await response.json(); // Parse the JSON response
+
+        console.log('Fetched Data:', data); // Debugging: log fetched data to check its structure
+
+        const table = document.getElementById('data-table'); // Sensor data table
+        const alertBox = document.getElementById('alert-box'); // Alert box
+        const alertTable = document.getElementById('alert-table'); // New alert table
+
+        table.innerHTML = '<tr><th>Attribute</th><th>Value</th></tr>'; // Reset sensor data table content
+
+        // To store outlier alert messages
+        let alertMessages = [];
+        let alertValues = [];
+        let alertTime = '';
+
+        // Populate table with sensor attributes (excluding the alert)
+        const attributes = data.attributes || {}; // Extract attributes from response
+        for (const [key, value] of Object.entries(attributes)) {
+          if (key !== 'Alert') { // Skip the "Alert" key from being displayed in the sensor data table
+            const row = `<tr><td>${key}</td><td>${value}</td></tr>`; // Create a table row for each attribute
+            table.innerHTML += row; // Append the row to the table
+          }
+
+          // Check for outlier values (crazy data)
+          console.log(`Checking ${key}: ${value}`); // Debugging: log each key-value pair
+
+          // Ensure value is parsed as a number for comparison
+          const numericValue = parseFloat(value);
+          if (isNaN(numericValue)) {
+            console.log(`Value for ${key} is not a number: ${value}`);
+          }
+
+          // Check for outlier conditions and add to alertMessages if needed
+          if (key === "Temperature" && (numericValue === 5 || numericValue === 45)) {
+            alertMessages.push('Extreme Temperature Detected!');
+            alertValues.push(`Temperature = ${numericValue}`);
+          } else if (key === "Humidity" && (numericValue === 10 || numericValue === 95)) {
+            alertMessages.push('Extreme Humidity Detected!');
+            alertValues.push(`Humidity = ${numericValue}`);
+          } else if (key === "CO2" && (numericValue === 100 || numericValue === 2500)) {
+            alertMessages.push('Extreme CO2 Levels Detected!');
+            alertValues.push(`CO2 = ${numericValue}`);
+          } else if (key === "pH" && (numericValue === 4 || numericValue === 8)) {
+            alertMessages.push('Extreme pH Level Detected!');
+            alertValues.push(`pH = ${numericValue}`);
+          }
+        }
+
+        // Get the current time in a readable format
+        if (alertMessages.length > 0) {
+          const now = new Date();
+          alertTime = now.toLocaleString(); // Format time as "MM/DD/YYYY, HH:MM:SS"
+
+          console.log('Alert Triggered at ' + alertTime + ': ' + alertMessages.join(', ')); // Debugging: check if alerts are triggered
+          alertBox.innerHTML = `<div>${alertMessages.join(', ')}</div><div style="text-align: right;">${alertTime}</div>`;
+          alertBox.style.display = 'block'; // Show the alert box
+
+          // Combine alerts and values into a single row
+          const combinedAlerts = alertMessages.join(', ');
+          const combinedValues = alertValues.join(', ');
+          const alertRow = `<tr><td>${combinedAlerts}</td><td>${combinedValues}</td><td>${alertTime}</td></tr>`;
+
+          // Properly append the row to maintain the table header
+          alertTable.innerHTML = alertTable.rows[0].outerHTML + alertRow + Array.from(alertTable.rows).slice(1).map(row => row.outerHTML).join('');
+        } else {
+          alertBox.style.display = 'none'; // Hide the alert box if no alert
+        }
+      } catch (error) {
+        console.error('Error fetching data:', error); // Log error if fetch fails
+
+        // Show error message in the alert box
+        const alertBox = document.getElementById('alert-box');
+        alertBox.innerText = 'Error fetching sensor data. Please try again.';
+        alertBox.style.display = 'block'; // Display the error message
+      }
+    }
+
+    // Automatically fetch data every 5 seconds
+    setInterval(fetchData, 5000); // Call fetchData every 5 seconds
+
+    // Fetch data when the page loads
+    window.onload = fetchData; // Fetch data once the page has loaded
+  </script>
 </head>
 <body>
-  <h1> Vertical Farm's Sensors Data Dashboard </h1>
+  <!-- Grafana Dashboard Section -->
+  <h1>Vertical Farm's Sensors Data Dashboard</h1>
   <iframe
-    src="https://labserver.sense-campus.gr:8087/d/be5j1ovj3gy68f/sensorsdata?kiosk=&from=2024-11-30T08:58:08.055Z&to=2024-11-30T20:58:08.055Z&timezone=browser&refresh=1m&viewPanel=panel-1"
-    class="shrink-iframe"
+    src="https://labserver.sense-campus.gr:8087/d/be5j1ovj3gy68f/sensorsdata?from=2024-11-29T19:37:21.356Z&to=2024-12-11T23:56:33.356Z&timezone=browser"
   ></iframe>
+
+  <!-- Sensor Data Section -->
+  <h1>Sensor Data</h1>
+  <!-- Alert box to display error or extreme value alerts -->
+  <div id="alert-box"></div>
+  <!-- Table to display sensor data -->
+  <table id="data-table">
+    <tr>
+      <th>Attribute</th>
+      <th>Value</th>
+    </tr>
+  </table>
+
+  <h2>Alert History</h2>
+  <!-- Wrapper div to make the alert table scrollable -->
+  <div style="max-height: 300px; overflow-y: auto; border: 1px solid #ccc;">
+    <table id="alert-table">
+      <tr>
+        <th>Alert</th>
+        <th>Value</th>
+        <th>Time</th>
+      </tr>
+    </table>
+  </div>
+
   <script>
-      if (navigator.serviceWorker) {
-        navigator.serviceWorker.register (
-          '/github-page-pwa/sw.js',
-          {scope: '/github-page-pwa/'}
-        )
-      }
+    if (navigator.serviceWorker) {
+      navigator.serviceWorker.register(
+        '/github-page-pwa/sw.js',
+        {scope: '/github-page-pwa/'}
+      );
+    }
   </script>
 </body>
 </html>
